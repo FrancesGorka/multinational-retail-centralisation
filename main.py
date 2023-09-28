@@ -1,11 +1,10 @@
-import pandas as pd
 from database_utils  import DatabaseConnector 
 from data_extraction import DataExtractor 
 from data_cleaning   import DataCleaning
 
 # Initialize database connector, extractor, and cleaner
 db_connector = DatabaseConnector()
-db_extractor = DataExtractor()
+db_extractor = DataExtractor(db_connector)  # Pass the db_connector instance to DataExtractor
 db_cleaner = DataCleaning()
 
 # Define API endpoints and headers
@@ -19,13 +18,13 @@ s3_products = "s3://data-handling-public/products.csv"
 s3_sales = "https://data-handling-public.s3.eu-west-1.amazonaws.com/date_details.json"
 
 # Extract and clean user data
-user_table = db_extractor.read_rds_table(db_connector, 'legacy_users')
+user_table = db_extractor.read_rds_table('legacy_users','db_creds.yaml')
 cleaned_user_data = db_cleaner.clean_user_data(user_table)
 db_connector.upload_to_db(cleaned_user_data, 'dim_users')
 
 # Extract and clean card data
 cleaned_card_data = db_cleaner.clean_card_data(card_data_link)
-db_connector.upload_to_db(cleaned_card_data, 'dim_card_details')
+db_connector.upload_to_db(cleaned_card_data,'dim_card_details')
 
 # Extract and clean store data
 no_of_stores = db_extractor.list_number_of_stores(no_of_stores_endpoint, header_dict)
