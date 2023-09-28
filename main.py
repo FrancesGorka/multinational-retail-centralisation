@@ -1,68 +1,49 @@
-from database_utils import DatabaseConnector
+import pandas as pd
+from database_utils  import DatabaseConnector 
+from data_extraction import DataExtractor 
+from data_cleaning   import DataCleaning
 
-database_connector = DatabaseConnector
+# Initialize database connector, extractor, and cleaner
+db_connector = DatabaseConnector()
+db_extractor = DataExtractor()
+db_cleaner = DataCleaning()
 
-database_connector.upload_to_db(dataframe_cleaned,dim_card_details)
+# Define API endpoints and headers
+no_of_stores_endpoint = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores"
+store_retrieval_endpoint = "https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/{store_number}"
+header_dict = {'x-api-key': 'yFBQbwXe9J3sd6zWVAMrK6lcxxr0q1lr2PT6DDMX'}
 
+# Define data sources
+card_data_link = "https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf"
+s3_products = "s3://data-handling-public/products.csv"
+s3_sales = "https://data-handling-public.s3.eu-west-1.amazonaws.com/date_details.json"
 
+# Extract and clean user data
+user_table = db_extractor.read_rds_table(db_connector, 'legacy_users')
+cleaned_user_data = db_cleaner.clean_user_data(user_table)
+db_connector.upload_to_db(cleaned_user_data, 'dim_users')
 
+# Extract and clean card data
+cleaned_card_data = db_cleaner.clean_card_data(card_data_link)
+db_connector.upload_to_db(cleaned_card_data, 'dim_card_details')
 
+# Extract and clean store data
+no_of_stores = db_extractor.list_number_of_stores(no_of_stores_endpoint, header_dict)
+store_data = db_extractor.retrieve_stores_data(store_retrieval_endpoint, header_dict, no_of_stores)
+cleaned_store_data = db_cleaner.clean_store_data(store_data)
+db_connector.upload_to_db(cleaned_store_data, 'dim_store_details')
 
-Create a db_creds.yaml file containing the database credentials, they are as follows:
+# Extract and clean products data
+products_data = db_extractor.extract_from_s3(s3_products)
+cleaned_products_data = db_cleaner.clean_products_data(products_data)
+db_connector.upload_to_db(cleaned_products_data, 'dim_products')
 
+# Extract and clean orders data
+orders_table = db_extractor.read_rds_table(db_connector, 'orders_table')
+cleaned_orders_table = db_cleaner.clean_orders_data(orders_table)
+db_connector.upload_to_db(cleaned_orders_table, 'dim_orders')
 
-RDS_HOST: data-handling-project-readonly.cq2e8zno855e.eu-west-1.rds.amazonaws.com
-RDS_PASSWORD: AiCore2022
-RDS_USER: aicore_admin
-RDS_DATABASE: postgres
-RDS_PORT: 5432
-
-
-You should add your db_creds.yaml file to the .gitignore file in your repository, so that the database credentials are not uploaded to your public GitHub repository.
-If you don't currently have a .gitignore file, you can create one by typing touch .gitignore in the terminal. Then just add the names of any files you don't want git to track.
-
-
-Now you will need to develop methods in your DatabaseConnector class to extract the data from the database.
-
-
-Step 2:
-
-Create a method read_db_creds this will read the credentials yaml file and return a dictionary of the credentials.
-You will need to pip install PyYAML and import yaml to do this.
-
-
-Step 3:
-
-Now create a method init_db_engine which will read the credentials from the return of read_db_creds and initialise and return an sqlalchemy database engine.
-
-
-Step 4:
-
-Using the engine from init_db_engine create a method list_db_tables to list all the tables in the database so you know which tables you can extract data from.
-Develop a method inside your DataExtractor class to read the data from the RDS database.
-
-
-Step 5:
-
-Develop a method called read_rds_table in your DataExtractor class which will extract the database table to a pandas DataFrame.
-
-It will take in an instance of your DatabaseConnector class and the table name as an argument and return a pandas DataFrame.
-Use your list_db_tables method to get the name of the table containing user data.
-Use the read_rds_table method to extract the table containing user data and return a pandas DataFrame.
-
-
-Step 6:
-
-Create a method called clean_user_data in the DataCleaning class which will perform the cleaning of the user data.
-
-You will need clean the user data, look out for NULL values, errors with dates, incorrectly typed values and rows filled with the wrong information.
-
-
-Step 7:
-
-Now create a method in your DatabaseConnector class called upload_to_db. This method will take in a Pandas DataFrame and table name to upload to as an argument.
-
-
-Step 8:
-
-Once extracted and cleaned use the upload_to_db method to store the data in your sales_data database in a table named dim_users.
+# Extract and clean sales data
+sales_data = db_extractor.extract_from_s3(s3_sales)
+cleaned_sales_data = db_cleaner.clean_sales_data(sales_data)
+db_connector.upload_to_db(cleaned_sales_data, 'dim_date_times')

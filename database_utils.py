@@ -12,7 +12,7 @@ class DatabaseConnector():
 
     @staticmethod
     def init_db_engine():
-        credentials = read_db_creds()
+        credentials = DatabaseConnector.read_db_creds()
 
         RDS_HOST = credentials['RDS_HOST']
         RDS_PASSWORD = credentials['RDS_PASSWORD']
@@ -38,7 +38,8 @@ class DatabaseConnector():
 
         return tables
 
-    def upload_to_db(dataframe,table_name):
+    @staticmethod
+    def upload_to_db(dataframe, table_name): 
         engine = DatabaseConnector.init_db_engine()
-        dataframe.to_sql('table_name', engine, if_exists='replace', index=False)
+        dataframe.to_sql(table_name, engine, if_exists='replace', index=False)
         print(f"{table_name} has successfully been uploaded.")
