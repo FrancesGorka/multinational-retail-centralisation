@@ -1,33 +1,40 @@
 import pandas as pd
-import tabula as tb
+import tabula
 import requests
 import boto3
 import io
 
 class DataExtractor:
-    def read_rds_table(self, db_connector, table_name):
-        tables = db_connector.list_db_tables()
+    def __init__(self, db_connector):
+        self.db_connector = db_connector
+
+    def read_rds_table(self, table_name, creds):
+        tables = self.db_connector.list_db_tables()
         if table_name in tables:
-            engine = db_connector.init_db_engine()
+            engine = self.db_connector.init_db_engine(creds)
             dataframe = pd.read_sql(table_name, engine)
             return dataframe
         else:
             print("Table not found.")
             return None
 
-    def retrieve_pdf_data(self, url):
+    @staticmethod
+    def retrieve_pdf_data(url):
         all_pages_df = tb.read_pdf(url, pages='all')
-        return all_pages_df
+        combined_df = pd.concat(all_pages_df, ignore_index=True)
+        return combined_df
 
-    def list_number_of_stores(self, endpoint, header_dict):
+    @staticmethod
+    def list_number_of_stores(endpoint, header_dict):
         response = requests.get(endpoint, headers=header_dict)
         if response.status_code == 200:
-            return response.json()
+            return response.json()['number_stores']
         else:
             print("Failed to fetch the number of stores")
             return 0
-
-    def retrieve_stores_data(self, endpoint, header_dict, no_of_stores):
+    
+    @staticmethod
+    def retrieve_stores_data(endpoint, header_dict, no_of_stores):
         store_data_list = []
 
         for store in range(no_of_stores):
@@ -42,7 +49,8 @@ class DataExtractor:
         stores_df = pd.DataFrame(store_data_list)
         return stores_df
 
-    def extract_from_s3(self, s3_address):
+    @staticmethod
+    def extract_from_s3(s3_address):
         s3 = boto3.client('s3')
         bucket, key = s3_address.replace('s3://', '').split('/', 1)
         try:
